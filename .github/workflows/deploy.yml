@@ -1,0 +1,47 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to Server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: 118.89.69.72
+        username: ubuntu
+        password: ${{ secrets.SERVER_PASSWORD }}
+        script: |
+          echo "🚀 Starting deployment..."
+          
+          # 创建项目目录
+          mkdir -p ~/devops-demo
+          cd ~/devops-demo
+          
+          # 拉取最新代码
+          if [ -d ".git" ]; then
+            git pull origin main
+          else
+            git clone https://github.com/superding007-arch/devops-demo.git .
+          fi
+          
+          # 构建并运行 Docker 容器
+          cd MyApi
+          docker build -t myapi:latest .
+          
+          # 停止旧容器
+          docker stop myapi 2>/dev/null || true
+          docker rm myapi 2>/dev/null || true
+          
+          # 启动新容器
+          docker run -d --name myapi -p 80:80 --restart unless-stopped myapi:latest
+          
+          echo "✅ Deployment completed!"
+          docker ps | grep myapi
